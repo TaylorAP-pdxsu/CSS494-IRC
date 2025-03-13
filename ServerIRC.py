@@ -1,8 +1,7 @@
 import socket
 import threading
 import sys
-from User import User
-from Room import Room
+from Core import *
 
 # Server configuration
 SERVER_HOST = 'localhost'
@@ -19,11 +18,12 @@ def sendHelp(user_socket: socket):
     user_socket.send("Adding a '/' to the beginning of your message will issue a command.\r\n".encode())
     user_socket.send("Angled brackets '<>' represent an additional option or arg to add ('<>' not included)\r\n".encode())
     user_socket.send("Available commands are:\r\n".encode())
-    user_socket.send("List                 - List all rooms\r\n".encode())
-    user_socket.send("Create               - Creates a room\r\n".encode())
-    user_socket.send("Join                 - Join one or more rooms\r\n".encode())
-    user_socket.send("Leave <room number>  - Leaves the room with the following room number\r\n".encode())
-    user_socket.send("Show <room number>   - Shows all members in the room with the given room number\r\n".encode())
+    user_socket.send("List                      - List all rooms\r\n".encode())
+    user_socket.send("Create                    - Creates a room\r\n".encode())
+    user_socket.send("Join <room number(s)>     - Join one or more rooms (seperated by space)\r\n".encode())
+    user_socket.send("Leave <room number>       - Leaves the room with the following room number\r\n".encode())
+    user_socket.send("Show <room number>        - Shows all members in the room with the given room number\r\n".encode())
+    user_socket.send("Quit                      - Disconnect from the server\r\n".encode())
 
 # Function to broadcast messages to all user_dict
 def broadcast(message, user_socket):
@@ -81,6 +81,7 @@ def handle_user(user_socket: socket, user_address):
             if "/" in message:
                 if "List" in message:
                     user_socket.send(roomToStr().encode())
+
                 elif "Create" in message:
                     user_socket.send("Enter the name of the server: ".encode())
                     room_name = receiveMessage(user_socket)
@@ -88,16 +89,34 @@ def handle_user(user_socket: socket, user_address):
                     room_dict.update({room.getId(): room})
                     user_socket.send("Room added.\r\n".encode())
 
-            elif message:
+                elif "Join" in message:
+                    room_nums_str = message[6:].strip().split()
+                    print(room_nums_str)
+                    non_existing_rooms = user.joinRooms(room_nums_str, room_dict)
+                    if non_existing_rooms != "":
+                        user_socket.send(("Following room numbers not found: " + non_existing_rooms).encode())
+                    user_socket.send(("Current rooms:\r\n" + user.getRoomsStr()).encode())
+
+                elif "Leave" in message:
+                    response_str = user.leaveRoom(int(message[7:].strip()), room_dict)
+                    if response_str != "":
+                        user_socket.send(response_str.encode())
+                    else:
+                        user_socket.send("You have left the room.\r\n".encode())
+
+                elif "Quit" in message:
+                    # user disconnected
+                    user_socket.send("Exiting server, have a nice day!".encode())
+                    print(f"user {user_address}-{user.getUsername()} disconnected")
+                    user_dict.pop(user.getId(), None)
+                    if user_socket != None:
+                        user_socket.close()
+                    break
+
+            else:
                 print(f"Received message from {user_address}-{user.getUsername()}: {message}")
                 broadcast(message, user_socket)
-            else:
-                # user disconnected
-                print(f"user {user_address}-{user.getUsername()} disconnected")
-                user_dict.pop(user.getId(), None)
-                if user_socket != None:
-                    user_socket.close()
-                break
+                
 
         except Exception as e:
             print(f"Error with user {user_address}-{user.getUsername()}: {e}")
@@ -109,11 +128,19 @@ def handle_user(user_socket: socket, user_address):
 # Start the IRC server
 def start_server():
     global user_dict
+    global room_dict
 
     SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     SERVER_SOCKET.bind((SERVER_HOST, SERVER_PORT))
     SERVER_SOCKET.listen(5)
     print(f"Server started on {SERVER_HOST}:{SERVER_PORT}")
+
+    test_room = Room("test1")
+    room_dict.update({test_room.getId(): test_room})
+    test_room = Room("test2")
+    room_dict.update({test_room.getId(): test_room})
+    test_room = Room("test3")
+    room_dict.update({test_room.getId(): test_room})
 
     while True:
         # Accept new connections
