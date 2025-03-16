@@ -51,8 +51,8 @@ def receiveMessage(user_socket: socket):
     received = ""
     while True:
         chunk = user_socket.recv(BUFFER_SIZE).decode()
-        if "\n" in chunk:
-            return received.strip("\r")
+        if os.linesep in chunk:
+            return received
         received += chunk
 
 
