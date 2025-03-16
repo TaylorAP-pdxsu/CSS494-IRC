@@ -51,7 +51,7 @@ def receiveMessage(user_socket: socket):
     received = ""
     while True:
         chunk = user_socket.recv(BUFFER_SIZE).decode()
-        if os.linesep in chunk:
+        if "\n" in chunk:
             return received
         received += chunk
 
@@ -143,6 +143,7 @@ def handle_user(user_socket: socket, user_address):
 def start_server():
     global user_dict
     global room_dict
+    global SERVER_SOCKET
 
     SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     SERVER_SOCKET.bind((SERVER_HOST, SERVER_PORT))
@@ -170,7 +171,7 @@ def handle_server_commands():
         if server_input.lower() == "quit":
             print("\nServer is shutting down...")
             # Send shutdown message to all connected users
-            broadcast("Server is shutting down...".encode(), SERVER_SOCKET)
+            broadcast("Server is shutting down...", SERVER_SOCKET)
             # Close all user connections
             for user in user_dict.values():
                 user.getSocket().close()
