@@ -6,7 +6,7 @@ from Core import *
 
 # Server configuration
 SERVER_HOST = 'localhost'
-SERVER_PORT = 8080
+SERVER_PORT = 3333
 BUFFER_SIZE = 1024
 SERVER_SOCKET = None
 
@@ -104,6 +104,18 @@ def handle_user(user_socket: socket, user_address):
                         user_socket.send(response_str.encode())
                     else:
                         user_socket.send("You have left the room.\r\n".encode())
+                
+                elif "Show" in message:
+                    room_id_str = message[6:].strip()
+                    try:
+                        room_id = int(room_id_str)
+                        if room_id in room_dict:
+                            members_str = room_dict[room_id].getMembersStr()
+                            user_socket.send(members_str.encode())
+                        else:
+                            user_socket.send("Room not found.\r\n".encode())
+                    except ValueError:
+                        user_socket.send("Invalid room ID.\r\n".encode())
 
                 elif "Quit" in message:
                     # user disconnected

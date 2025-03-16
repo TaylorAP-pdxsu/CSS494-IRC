@@ -6,9 +6,9 @@ class User:
         self.id = random.randint(100000, 999999)
         self.username = username
         self.socket = socket
-        self.ipAddress = ipAddress
+        self.ipAddress = ipAddress 
         self.rooms: dict[int, str] = {}
-        
+
     def joinRooms(self, room_nums: list[str], room_dict: dict[int, "Room"]) -> str:
         non_existing_rooms: str = ""
         for room_id in room_nums:
@@ -73,3 +73,10 @@ class Room:
     
     def getName(self):
         return self.name
+    
+    def getMembersStr(self) -> str:
+        members_str = f"Members in room {self.name} (ID: {self.id}):\r\n"
+        for username in self.users.values():
+            members_str += f"- {username}\r\n"
+        return members_str
+
