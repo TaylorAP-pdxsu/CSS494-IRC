@@ -3,6 +3,7 @@ import threading
 import sys
 from Core import *
 
+
 # Server configuration
 SERVER_HOST = 'localhost'
 SERVER_PORT = 8080
