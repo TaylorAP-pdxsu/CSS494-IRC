@@ -16,16 +16,16 @@ user_dict: dict[int, User] = {}
 room_dict: dict[int, Room] = {}
 
 def sendHelp(user_socket: socket):
-    user_socket.send(("How to issue commands:" + os.linesep).encode())
-    user_socket.send(("Adding a '/' to the beginning of your message will issue a command." + os.linesep).encode())
-    user_socket.send(("Angled brackets '<>' represent an additional option or arg to add ('<>' not included)" + os.linesep).encode())
-    user_socket.send(("Available commands are:" + os.linesep).encode())
-    user_socket.send(("List                      - List all rooms" + os.linesep).encode())
-    user_socket.send(("Create                    - Creates a room" + os.linesep).encode())
-    user_socket.send(("Join <room number(s)>     - Join one or more rooms (seperated by space)" + os.linesep).encode())
-    user_socket.send(("Leave <room number>       - Leaves the room with the following room number" + os.linesep).encode())
-    user_socket.send(("Show <room number>        - Shows all members in the room with the given room number" + os.linesep).encode())
-    user_socket.send(("Quit                      - Disconnect from the server" + os.linesep).encode())
+    user_socket.send(("How to issue commands:" + os.linesep).encode('utf-8'))
+    user_socket.send(("Adding a '/' to the beginning of your message will issue a command." + os.linesep).encode('utf-8'))
+    user_socket.send(("Angled brackets '<>' represent an additional option or arg to add ('<>' not included)" + os.linesep).encode('utf-8'))
+    user_socket.send(("Available commands are:" + os.linesep).encode('utf-8'))
+    user_socket.send(("List                      - List all rooms" + os.linesep).encode('utf-8'))
+    user_socket.send(("Create                    - Creates a room" + os.linesep).encode('utf-8'))
+    user_socket.send(("Join <room number(s)>     - Join one or more rooms (seperated by space)" + os.linesep).encode('utf-8'))
+    user_socket.send(("Leave <room number>       - Leaves the room with the following room number" + os.linesep).encode('utf-8'))
+    user_socket.send(("Show <room number>        - Shows all members in the room with the given room number" + os.linesep).encode('utf-8'))
+    user_socket.send(("Quit                      - Disconnect from the server" + os.linesep).encode('utf-8'))
 
 # Function to broadcast messages to all user_dict
 def broadcast(message, user_socket):
@@ -34,7 +34,7 @@ def broadcast(message, user_socket):
         # Don't send the message to the sender
         if user.getSocket() != user_socket:
                 try:
-                    user.getSocket().send(message.encode())
+                    user.getSocket().send(message.encode('utf-8'))
                 except:
                     pass
 
@@ -50,8 +50,8 @@ def roomToStr():
 def receiveMessage(user_socket: socket):
     received = ""
     while True:
-        chunk = user_socket.recv(BUFFER_SIZE).decode()
-        if "\n" in chunk:
+        chunk = user_socket.recv(BUFFER_SIZE).decode('utf-8')
+        if "\r\n" in chunk or "\n" in chunk:
             return received
         received += chunk
 
@@ -61,7 +61,7 @@ def handle_user(user_socket: socket, user_address):
     global user_dict
     global room_dict
 
-    user_socket.send("Enter your username: ".encode())
+    user_socket.send("Enter your username: ".encode('utf-8'))
     user_name = receiveMessage(user_socket)
 
     user = User(user_name, user_socket, user_address)
@@ -70,41 +70,41 @@ def handle_user(user_socket: socket, user_address):
     print(f"New connection from {user_address}-{user.getUsername()}")
     
     # Send welcome message to the user
-    user_socket.send(("Welcome to the IRC Server!" + os.linesep).encode())
+    user_socket.send(("Welcome to the IRC Server!" + os.linesep).encode('utf-8'))
     sendHelp(user_socket)
 
     # Keep the connection alive
     while True:
         try:
             # Receive the user's message
-            user_socket.send(">".encode())
+            user_socket.send(">".encode('utf-8'))
             message = receiveMessage(user_socket)
             
             if "/" in message:
                 if "List" in message:
-                    user_socket.send(roomToStr().encode())
+                    user_socket.send(roomToStr().encode('utf-8'))
 
                 elif "Create" in message:
-                    user_socket.send("Enter the name of the server: ".encode())
+                    user_socket.send("Enter the name of the server: ".encode('utf-8'))
                     room_name = receiveMessage(user_socket)
                     room = Room(room_name)
                     room_dict.update({room.getId(): room})
-                    user_socket.send(("Room added." + os.linesep).encode())
+                    user_socket.send(("Room added." + os.linesep).encode('utf-8'))
 
                 elif "Join" in message:
                     room_nums_str = message[6:].strip().split()
                     print(room_nums_str)
                     non_existing_rooms = user.joinRooms(room_nums_str, room_dict)
                     if non_existing_rooms != "":
-                        user_socket.send(("Following room numbers not found: " + non_existing_rooms).encode())
-                    user_socket.send((("Current rooms:" + os.linesep) + user.getRoomsStr()).encode())
+                        user_socket.send(("Following room numbers not found: " + non_existing_rooms).encode('utf-8'))
+                    user_socket.send((("Current rooms:" + os.linesep) + user.getRoomsStr()).encode('utf-8'))
 
                 elif "Leave" in message:
                     response_str = user.leaveRoom(int(message[7:].strip()), room_dict)
                     if response_str != "":
-                        user_socket.send(response_str.encode())
+                        user_socket.send(response_str.encode('utf-8'))
                     else:
-                        user_socket.send(("You have left the room." + os.linesep).encode())
+                        user_socket.send(("You have left the room." + os.linesep).encode('utf-8'))
                 
                 elif "Show" in message:
                     room_id_str = message[6:].strip()
@@ -112,15 +112,15 @@ def handle_user(user_socket: socket, user_address):
                         room_id = int(room_id_str)
                         if room_id in room_dict:
                             members_str = room_dict[room_id].getMembersStr()
-                            user_socket.send(members_str.encode())
+                            user_socket.send(members_str.encode('utf-8'))
                         else:
-                            user_socket.send(("Room not found." + os.linesep).encode())
+                            user_socket.send(("Room not found." + os.linesep).encode('utf-8'))
                     except ValueError:
-                        user_socket.send(("Invalid room ID." + os.linesep).encode())
+                        user_socket.send(("Invalid room ID." + os.linesep).encode('utf-8'))
 
                 elif "Quit" in message:
                     # user disconnected
-                    user_socket.send("Exiting server, have a nice day!".encode())
+                    user_socket.send("Exiting server, have a nice day!".encode('utf-8'))
                     print(f"user {user_address}-{user.getUsername()} disconnected")
                     user_dict.pop(user.getId(), None)
                     if user_socket != None:
