@@ -149,7 +149,7 @@ def handle_user(user_socket: socket, user_address):
                     break
 
             else:
-                 user_socket.send("You must use '/Chat <room_id> <message>' to send messages.".encode('utf-8'))
+                 user_socket.send(("--SERVER-- Must enter valid command\n").encode('utf-8'))
 
 
         except Exception as e:
