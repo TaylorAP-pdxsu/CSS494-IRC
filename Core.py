@@ -55,7 +55,7 @@ class User:
         for (id, name) in self.rooms.items():
             message += "[" + str(id) + ", " + name + "]\r\n"
         return message
-    
+
 class Room:
     def __init__(self, name: str):
         self.id = random.randint(1, 99)
@@ -79,4 +79,24 @@ class Room:
         for username in self.users.values():
             members_str += f"- {username}\r\n"
         return members_str
+
+    def sendMessageToRoom(self, message: str, sender: User, user_dict: dict[int, User]):
+        
+        if sender.getId() not in self.users:
+            sender.getSocket().send(f"You are not a member of Room {self.name}.\r\n".encode('utf-8'))
+            print(f"User {sender.getUsername()} tried to send a message to Room {self.name}, but they are not a member.")
+            return
+
+        print(f"Message from {sender.getUsername()} to Room {self.name}: {message}")
+        print(f"Users in Room {self.name}: {self.users}")
+
+        for user_id in self.users:
+            if user_id != sender.getId():
+                user = user_dict.get(user_id)
+                if user:
+                    try:
+                        print(f"Sending message to {user.getUsername()} ({user.getAddress()})")
+                        user.getSocket().send(f"[Room {self.name}] {sender.getUsername()}: {message}\r\n".encode('utf-8'))
+                    except Exception as e:
+                        print(f"Error sending to {user.getUsername()}: {e}")
 

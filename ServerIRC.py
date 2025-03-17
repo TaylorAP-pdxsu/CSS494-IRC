@@ -25,6 +25,7 @@ def sendHelp(user_socket: socket):
     user_socket.send(("Join <room number(s)>     - Join one or more rooms (seperated by space)" + os.linesep).encode('utf-8'))
     user_socket.send(("Leave <room number>       - Leaves the room with the following room number" + os.linesep).encode('utf-8'))
     user_socket.send(("Show <room number>        - Shows all members in the room with the given room number" + os.linesep).encode('utf-8'))
+    user_socket.send(("Chat <room_id> <message> - Send a message to a specific room" + os.linesep).encode('utf-8'))
     user_socket.send(("Quit                      - Disconnect from the server" + os.linesep).encode('utf-8'))
 
 # Function to broadcast messages to all user_dict
@@ -33,10 +34,10 @@ def broadcast(message, user_socket):
     for user in user_dict.values():
         # Don't send the message to the sender
         if user.getSocket() != user_socket:
-                try:
-                    user.getSocket().send(message.encode('utf-8'))
-                except:
-                    pass
+            try:
+                user.getSocket().send(message.encode('utf-8'))
+            except:
+                pass
 
 def roomToStr():
     global room_dict
@@ -47,14 +48,13 @@ def roomToStr():
 
     return room_str
 
-def receiveMessage(user_socket: socket):
+def receiveMessage(user_socket: socket) -> str:
     received = ""
     while True:
-        chunk = user_socket.recv(BUFFER_SIZE).decode('utf-8')
+        chunk = user_socket.recv(BUFFER_SIZE).decode('utf-8', errors='ignore')
         if "\r\n" in chunk or "\n" in chunk:
-            return received
+            return received.strip()  
         received += chunk
-
 
 # Handle incoming user connections
 def handle_user(user_socket: socket, user_address):
@@ -68,7 +68,7 @@ def handle_user(user_socket: socket, user_address):
     user_dict.update({user.getId(): user})
 
     print(f"New connection from {user_address}-{user.getUsername()}")
-    
+
     # Send welcome message to the user
     user_socket.send(("Welcome to the IRC Server!" + os.linesep).encode('utf-8'))
     sendHelp(user_socket)
@@ -79,7 +79,7 @@ def handle_user(user_socket: socket, user_address):
             # Receive the user's message
             user_socket.send(">".encode('utf-8'))
             message = receiveMessage(user_socket)
-            
+
             if "/" in message:
                 if "List" in message:
                     user_socket.send(roomToStr().encode('utf-8'))
@@ -98,14 +98,14 @@ def handle_user(user_socket: socket, user_address):
                     if non_existing_rooms != "":
                         user_socket.send(("Following room numbers not found: " + non_existing_rooms).encode('utf-8'))
                     user_socket.send((("Current rooms:" + os.linesep) + user.getRoomsStr()).encode('utf-8'))
-
+                
                 elif "Leave" in message:
                     response_str = user.leaveRoom(int(message[7:].strip()), room_dict)
                     if response_str != "":
                         user_socket.send(response_str.encode('utf-8'))
                     else:
                         user_socket.send(("You have left the room." + os.linesep).encode('utf-8'))
-                
+
                 elif "Show" in message:
                     room_id_str = message[6:].strip()
                     try:
@@ -118,7 +118,28 @@ def handle_user(user_socket: socket, user_address):
                     except ValueError:
                         user_socket.send(("Invalid room ID." + os.linesep).encode('utf-8'))
 
+                elif "Chat" in message:
+                    
+                    parts = message.split()
+                        
+                    if len(parts) >= 3:
+                        room_id_str = parts[1].strip()  # Remove any extra whitespace or control characters
+                            
+                        if room_id_str.isdigit():  # Check if the room_id is a valid number
+                            room_id = int(room_id_str)
+                            room_message = " ".join(parts[2:])
+                                
+                            if room_id in room_dict:
+                                room_dict[room_id].sendMessageToRoom(room_message, user, user_dict)
+                            else:
+                                user_socket.send(("Room not found." + os.linesep).encode('utf-8'))
+                        else:
+                            user_socket.send(("Invalid room ID. Room ID must be a number." + os.linesep).encode('utf-8'))                   
+                    else:
+                        user_socket.send(("Usage: /Chat <room_id> <message>" + os.linesep).encode('utf-8'))                
+
                 elif "Quit" in message:
+                    
                     # user disconnected
                     user_socket.send("Exiting server, have a nice day!".encode('utf-8'))
                     print(f"user {user_address}-{user.getUsername()} disconnected")
@@ -128,9 +149,8 @@ def handle_user(user_socket: socket, user_address):
                     break
 
             else:
-                print(f"Received message from {user_address}-{user.getUsername()}: {message}")
-                broadcast(message, user_socket)
-                
+                 user_socket.send("You must use '/Chat <room_id> <message>' to send messages.".encode('utf-8'))
+
 
         except Exception as e:
             print(f"Error with user {user_address}-{user.getUsername()}: {e}")
@@ -160,7 +180,7 @@ def start_server():
     while True:
         # Accept new connections
         user_socket, user_address = SERVER_SOCKET.accept()
-        
+
         # Start a new thread to handle the user
         user_thread = threading.Thread(target=handle_user, args=(user_socket, user_address))
         user_thread.start()
